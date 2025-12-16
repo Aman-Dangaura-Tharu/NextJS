@@ -1,4 +1,5 @@
 // src/components/WeatherCard.tsx
+import { useEffect, useState } from 'react';
 import type { WeatherData } from '../types/weather';
 
 interface WeatherCardProps {
@@ -6,42 +7,97 @@ interface WeatherCardProps {
 }
 
 const WeatherCard: React.FC<WeatherCardProps> = ({ data }) => {
+  const [seasonalImage, setSeasonalImage] = useState<string>('');
   const weatherIcon = data.weather[0].icon;
+
+  // Determine the current season based on the current date
+  const getSeason = (): string => {
+    const date = new Date();
+    const month = date.getMonth() + 1; // getMonth() is 0-indexed
+    
+    // Northern Hemisphere seasons
+    if (month >= 3 && month <= 5) return 'spring';
+    if (month >= 6 && month <= 8) return 'summer';
+    if (month >= 9 && month <= 11) return 'autumn';
+    return 'winter'; // December to February
+  };
+
+  // Set seasonal image based on the current season and weather condition
+  useEffect(() => {
+    const season = getSeason();
+    const isDay = weatherIcon.endsWith('d');
+    
+    // Base URL for weather images (using OpenWeatherMap's weather condition codes)
+    const baseUrl = 'https://openweathermap.org/img/wn/';
+    
+    // Map weather conditions to appropriate seasonal images
+    const weatherCode = weatherIcon.replace(/[dn]$/, ''); // Remove day/night indicator
+    
+    // Default to weather code based image
+    let imageUrl = `${baseUrl}${weatherCode}@2x.png`;
+    
+    // Override with seasonal images for certain conditions
+    if (['01', '02'].includes(weatherCode)) { // Clear or few clouds
+      imageUrl = `https://source.unsplash.com/300x200/?${season}-landscape`;
+    } else if (['09', '10', '11'].includes(weatherCode)) { // Rain/Thunderstorm
+      imageUrl = `https://source.unsplash.com/300x200/?${season}-rain`;
+    } else if (weatherCode === '13') { // Snow
+      imageUrl = 'https://source.unsplash.com/300x200/?winter-snow';
+    } else if (weatherCode === '50') { // Mist/Fog
+      imageUrl = 'https://source.unsplash.com/300x200/?fog';
+    }
+    
+    setSeasonalImage(imageUrl);
+  }, [weatherIcon]);
 
   // Get the appropriate weather icon based on the weather condition
   const getWeatherIcon = (iconCode: string) => {
+    // If we have a seasonal image, use it
+    if (seasonalImage) return seasonalImage;
+    
+    // Fallback to default icons
     const iconMap: { [key: string]: string } = {
-      '01d': '/weather.png',   // clear sky (day) - using weather.png for consistency
-      '01n': '/weather.png',   // clear sky (night) - using weather.png for consistency
-      '02d': '/weather.png',   // few clouds (day)
-      '02n': '/weather.png',   // few clouds (night)
-      '03d': '/weather.png',   // scattered clouds - using weather.png for consistency
-      '03n': '/weather.png',   // scattered clouds - using weather.png for consistency
-      '04d': '/weather.png',   // broken clouds - using weather.png for consistency
-      '04n': '/weather.png',   // broken clouds - using weather.png for consistency
-      '09d': '/weather.png',   // shower rain - using weather.png for consistency
-      '09n': '/weather.png',   // shower rain - using weather.png for consistency
-      '10d': '/weather.png',   // rain (day) - using weather.png for consistency
-      '10n': '/weather.png',   // rain (night) - using weather.png for consistency
-      '11d': '/storm.png',     // thunderstorm
-      '11n': '/storm.png',     // thunderstorm
-      '13d': '/snow.png',      // snow
-      '13n': '/snow.png',      // snow
-      '50d': '/fog.png',       // mist/fog
-      '50n': '/fog.png'        // mist/fog
+      '01d': 'https://openweathermap.org/img/wn/01d@2x.png',   // clear sky (day)
+      '01n': 'https://openweathermap.org/img/wn/01n@2x.png',   // clear sky (night)
+      '02d': 'https://openweathermap.org/img/wn/02d@2x.png',   // few clouds (day)
+      '02n': 'https://openweathermap.org/img/wn/02n@2x.png',   // few clouds (night)
+      '03d': 'https://openweathermap.org/img/wn/03d@2x.png',   // scattered clouds
+      '03n': 'https://openweathermap.org/img/wn/03n@2x.png',   // scattered clouds
+      '04d': 'https://openweathermap.org/img/wn/04d@2x.png',   // broken clouds
+      '04n': 'https://openweathermap.org/img/wn/04n@2x.png',   // broken clouds
+      '09d': 'https://openweathermap.org/img/wn/09d@2x.png',   // shower rain
+      '09n': 'https://openweathermap.org/img/wn/09n@2x.png',   // shower rain
+      '10d': 'https://openweathermap.org/img/wn/10d@2x.png',   // rain (day)
+      '10n': 'https://openweathermap.org/img/wn/10n@2x.png',   // rain (night)
+      '11d': 'https://openweathermap.org/img/wn/11d@2x.png',   // thunderstorm
+      '11n': 'https://openweathermap.org/img/wn/11n@2x.png',   // thunderstorm
+      '13d': 'https://openweathermap.org/img/wn/13d@2x.png',   // snow
+      '13n': 'https://openweathermap.org/img/wn/13n@2x.png',   // snow
+      '50d': 'https://openweathermap.org/img/wn/50d@2x.png',   // mist/fog
+      '50n': 'https://openweathermap.org/img/wn/50n@2x.png'    // mist/fog
     };
-    return iconMap[iconCode] || '/hot.png';
+    return iconMap[iconCode] || 'https://openweathermap.org/img/wn/01d@2x.png';
   };
 
   return (
     <div className="weather-card bg-white rounded-lg shadow-md p-6">
       <div className="flex flex-col md:flex-row items-center">
-        <div className="w-24 h-24 flex items-center justify-center">
-          <img
-            src={getWeatherIcon(weatherIcon)}
-            alt={data.weather[0].description}
-            className="w-20 h-20 object-contain"
-          />
+        <div className="w-full md:w-1/3 flex justify-center mb-4 md:mb-0">
+          <div className="relative w-40 h-40 rounded-lg overflow-hidden shadow-md">
+            <img
+              src={getWeatherIcon(weatherIcon)}
+              alt={`${data.weather[0].description} in ${getSeason()}`}
+              className="w-full h-full object-cover transition-opacity duration-500"
+              onError={(e) => {
+                // Fallback to default weather icon if image fails to load
+                const target = e.target as HTMLImageElement;
+                target.src = `https://openweathermap.org/img/wn/${weatherIcon}@2x.png`;
+              }}
+            />
+            <div className="absolute bottom-0 left-0 right-0 bg-black bg-opacity-50 text-white text-center py-1 text-sm">
+              {getSeason().charAt(0).toUpperCase() + getSeason().slice(1)}
+            </div>
+          </div>
         </div>
         <div className="md:ml-6 mt-4 md:mt-0 w-full">
           <h3 className="text-xl font-bold text-gray-800 text-center md:text-left">
